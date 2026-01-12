@@ -102,6 +102,13 @@ bool collides_unmoving(A a, B b)
 {
     return impl::collides_unmoving_dispatch(a, b, impl::priority_tag<3>{});
 }
+struct Minkowski_Set;
+struct collides_Minkowski_Set_return
+{
+    std::vector<size_t> rect_collisions;
+    std::vector<size_t> poly_collisions;
+};
+collides_Minkowski_Set_return collides_Minkowski_Set(i2d, const Minkowski_Set &); //returns max movement
 } // namespace kint
 
 #endif // KINT_COLLISION_HPP

@@ -135,7 +135,7 @@ Shape_Polygon minkowski_motion(const Shape_Polygon & shape)
         pts.push_back(shape.get_absolute(i));
         pts.push_back(shape.get_absolute(i) + shape.velocity);
     }
-    return Shape_Polygon_from_scatter(std::move(pts), i2d{0, 0});
+    return Shape_Polygon_from_scatter(std::move(pts), shape.velocity);
 }
 Shape_Polygon minkowski_motion(Shape_Rectangle shape)
 {
@@ -151,7 +151,6 @@ Shape_Rectangle minkowski_motion_axis_aligned(Shape_Rectangle shape)
     }
     else
         shape.dimensions += shape.velocity;
-    shape.velocity = i2d{0, 0};
     return shape;
 }
 

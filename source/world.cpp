@@ -9,10 +9,14 @@
 #include <SFML/Window/Keyboard.hpp>
 #include "player_controls.hpp"
 
+namespace kint
+{
+    i2d slide_trunc(i2d pos, Rational2D ideal_vel, const Impact & impact);
+}
 World make_a_level()
 {
     World world;
-    world.player.shape = kint::Shape_Rectangle({5, -8}, {0, 0}, {4, 4});
+    world.player.shape = kint::Shape_Rectangle({16, -8}, {0, 0}, {4, 4});
 
     //world.shapes.emplace_back(kint::Shape_Rectangle({-2, -6}, {0, 0}, {4, 2}));
     //world.shape_colors.emplace_back(sf::Color(50, 50, 50));
@@ -48,7 +52,7 @@ void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
 {
     std::visit([&](auto & shape)
     {
-        if(ticks_total % 16 < 8)
+        if(ticks_total % 20 < 10)
             shape.velocity.y = -1;
         else
             shape.velocity.y = +1;
@@ -65,19 +69,21 @@ void World_update(World & world)
     std::vector<size_t> shape_ids(world.shapes.size());
     std::ranges::iota(shape_ids, 0);
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::span<const size_t>(shape_ids));
-
     kint::move_and_slide(world.player.shape, mset);
+
     for(auto & shapev : world.shapes)
         std::visit([&](auto & shape)
         {
             shape.position += shape.velocity;
         }, shapev);
 
-    //if(world.player.stop_after_advance)
-    //    world.player.shape.velocity = kint::i2d{0, 0};
-
+    if(world.player.stop_after_advance)
+        world.player.shape.velocity = kint::i2d{0, 0};
 
     world.ticks_total++;
+
+    if(world.shapes.size())
+        bouncer_think(world.shapes[0], world.ticks_total);
 }
 void World_draw(const World & world, sf::RenderTarget & window, float interp_fraction)
 {
@@ -120,20 +126,30 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
         shape_draw(window, interp_fraction, player_colliding ? sf::Color::Red : sf::Color::Green,
                    world.player.shape);
 
-    auto draw_impacts = [&](const std::vector<kint::Impact> & unflitered)
+    auto draw_impacts = [&](const kint::Shape_Line hat, const std::vector<kint::Impact> & unflitered)
     {
         std::vector<kint::Impact> impacts = kint::impact_occlusion_filter(unflitered);
         if(impacts.size())
         {
-            kint::Rational closest_t = 1;
-            for(const auto & impact : impacts)
-                if(impact.t < closest_t)
-                    closest_t = impact.t;
             for(const auto & impact : impacts)
             {
-                rational2d_draw(window, impact.t == closest_t ? sf::Color::White : sf::Color(100, 100, 100, 155), impact.position);
-                if(impact.t == closest_t)
-                    shape_draw(window, interp_fraction, sf::Color::Yellow, impact.edge);
+                shape_draw(window, interp_fraction, sf::Color::Green, impact.edge);
+                //rational2d_draw(window, sf::Color::White, impact.position);
+
+                kint::Rational2D vel = hat.node;
+
+                kint::Rational2D fh = vel * impact.t;
+                kint::Rational2D sh = (vel * (1 - impact.t)).reduced();
+                kint::Rational2D edge = kint::Rational2D(impact.edge.node);
+                kint::Rational2D sh_rotated = dot(sh, edge) * edge;
+                kint::i2d::ntype edge_ls = dot(impact.edge.node, impact.edge.node);
+                kint::Rational2D nv = (sh_rotated / edge_ls).reduced();
+                kint::Rational2D cv = (fh + nv).reduced();
+
+                assert(kint::Rational2D(hat.position) + fh == impact.position);
+                rational2d_draw(window, sf::Color::White, kint::Rational2D(hat.position) + fh);
+                rational2d_draw(window, sf::Color::Yellow, kint::Rational2D(hat.position) + cv);
+                rational2d_draw(window, sf::Color::Blue, hat.position + slide_trunc(hat.position, cv, impact));
             }
         }
     };
@@ -157,7 +173,7 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
             find_impacts(world.shapes, hat, hat_colliding, hat_impacts);
             shape_draw(window, interp_fraction, hat_colliding ? sf::Color::Red : sf::Color::Green,
                     hat);
-            draw_impacts(hat_impacts);
+            draw_impacts(hat, hat_impacts);
         }
     }
     else
@@ -165,10 +181,10 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
         const auto h = world.player.want_velocity;
         {
             kint::Shape_Line hat = kint::Shape_Line(world.player.shape.position, world.player.shape.velocity, h, false);
-            std::vector<kint::Impact> hat_impacts = raycast_Minkowski_Set(hat.position, hat.position + hat.velocity, mset);
+            std::vector<kint::Impact> hat_impacts = raycast_Minkowski_Set(hat.position, hat.node_absolute(), mset);
             shape_draw(window, interp_fraction, sf::Color::White,
                        hat);
-            draw_impacts(hat_impacts);
+            draw_impacts(hat, hat_impacts);
         }
     }
 }

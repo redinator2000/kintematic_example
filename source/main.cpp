@@ -13,7 +13,7 @@ sf::View window_default_view_fixed(sf::Vector2u window_size)
 
 float fixed_update(sf::Clock & tick_clock, auto callable) //returns interp_fraction
 {
-    constexpr sf::Time update_rate = sf::microseconds(16666 * 10);
+    constexpr sf::Time update_rate = sf::microseconds(16666 * 20);
     sf::Time delta = tick_clock.getElapsedTime();
     if(delta >= update_rate)
     {
