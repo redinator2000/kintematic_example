@@ -12,11 +12,11 @@
 World make_a_level()
 {
     World world;
-    world.player.shape = kint::Shape_Rectangle({2, -6}, {0, 0}, {4, 4});
+    world.player.shape = kint::Shape_Rectangle({5, -8}, {0, 0}, {4, 4});
 
     //world.shapes.emplace_back(kint::Shape_Rectangle({-2, -6}, {0, 0}, {4, 2}));
     //world.shape_colors.emplace_back(sf::Color(50, 50, 50));
-    world.shapes.emplace_back(kint::Shape_Rectangle({8, -3}, {0, 0}, {4, 2}));
+    world.shapes.emplace_back(kint::Shape_Rectangle({8, -3}, {0, 1}, {4, 2}));
     world.shape_colors.emplace_back(sf::Color(50, 150, 50));
 
     world.shapes.emplace_back(kint::Shape_Rectangle({-24, 8}, {0, 0}, {8, 8}));
@@ -44,20 +44,40 @@ World make_a_level()
     assert(world.shapes.size() == world.shape_colors.size());
     return world;
 }
-
+void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
+{
+    std::visit([&](auto & shape)
+    {
+        if(ticks_total % 16 < 8)
+            shape.velocity.y = -1;
+        else
+            shape.velocity.y = +1;
+    }, shapev);
+}
 void World_update(World & world)
 {
     player_think(world.player);
     world.player.shape.velocity = world.player.want_velocity;
 
+    if(world.shapes.size())
+        bouncer_think(world.shapes[0], world.ticks_total);
+
     std::vector<size_t> shape_ids(world.shapes.size());
     std::ranges::iota(shape_ids, 0);
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::span<const size_t>(shape_ids));
-    world.player.shape.velocity = kint::clip_and_slide(shape_position_point(world.player.shape), mset);
-    world.player.shape.position += world.player.shape.velocity;
-    if(world.player.stop_after_advance)
-        world.player.shape.velocity = kint::i2d{0, 0};
-    world.player.shape.velocity = kint::clip_and_slide(shape_position_point(world.player.shape), mset); //just for visual velocity interpolation
+
+    kint::move_and_slide(world.player.shape, mset);
+    for(auto & shapev : world.shapes)
+        std::visit([&](auto & shape)
+        {
+            shape.position += shape.velocity;
+        }, shapev);
+
+    //if(world.player.stop_after_advance)
+    //    world.player.shape.velocity = kint::i2d{0, 0};
+
+
+    world.ticks_total++;
 }
 void World_draw(const World & world, sf::RenderTarget & window, float interp_fraction)
 {
@@ -145,11 +165,8 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
         const auto h = world.player.want_velocity;
         {
             kint::Shape_Line hat = kint::Shape_Line(world.player.shape.position, world.player.shape.velocity, h, false);
-            bool hat_colliding = false;
-            std::vector<kint::Impact> hat_impacts = {};
-            find_impacts(mset.polys, hat, hat_colliding, hat_impacts);
-            find_impacts(mset.rects, hat, hat_colliding, hat_impacts);
-            shape_draw(window, interp_fraction, hat_colliding ? sf::Color::Red : sf::Color::White,
+            std::vector<kint::Impact> hat_impacts = raycast_Minkowski_Set(hat.position, hat.position + hat.velocity, mset);
+            shape_draw(window, interp_fraction, sf::Color::White,
                        hat);
             draw_impacts(hat_impacts);
         }

@@ -7,8 +7,8 @@ namespace kint
 {
 struct Impact;
 struct Minkowski_Set;
-i2d clip_and_slide(Shape_Point, const Minkowski_Set &);
 std::vector<Impact> impact_occlusion_filter(std::span<const Impact>);
+std::vector<Impact> move_and_slide(Shape_Rectangle &, const Minkowski_Set &, bool better_next_velocity = true);
 }
 
 #endif // KINT_ADVANCE_HPP

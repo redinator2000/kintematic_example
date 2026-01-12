@@ -13,6 +13,8 @@ struct Player
 };
 struct World
 {
+    int ticks_total = 0;
+
     std::vector<kint::Shape_Variant> shapes = {};
     std::vector<sf::Color> shape_colors = {};
 

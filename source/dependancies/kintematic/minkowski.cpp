@@ -1,5 +1,6 @@
 #include "minkowski.hpp"
 #include <algorithm>
+#include <cassert>
 
 namespace kint
 {
@@ -67,7 +68,13 @@ std::vector<i2d> convex_hull(std::vector<i2d> && pts)
 
     return hull;
 }
-
+Shape_Polygon Shape_Polygon_from_scatter(std::vector<i2d> && scattered_points, i2d vel)
+{
+    std::vector<i2d> convex = convex_hull(std::move(scattered_points));
+    Shape_Polygon sp = Shape_Polygon_from_points(convex);
+    sp.velocity = vel;
+    return sp;
+}
 Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, Shape_Line shape)
 {
     std::array<i2d, 4> rect_points = {
@@ -87,10 +94,7 @@ Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, Shape_Line shape)
         for(size_t l = 0; l < 2; l++)
             pts.push_back(rect_points[r] + line_points[l]);
 
-    std::vector<i2d> convex = convex_hull(std::move(pts));
-    Shape_Polygon sp = Shape_Polygon_from_points(convex);
-    sp.velocity = shape.velocity;
-    return sp;
+    return Shape_Polygon_from_scatter(std::move(pts), shape.velocity);
 }
 Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, const Shape_Polygon & shape)
 {
@@ -108,10 +112,7 @@ Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, const Shape_Polygon 
         for(size_t i = 0; i < shape.node_count(); ++i)
             pts.push_back(r + shape.get_absolute(i));
 
-    std::vector<i2d> convex = convex_hull(std::move(pts));
-    Shape_Polygon sp = Shape_Polygon_from_points(convex);
-    sp.velocity = shape.velocity;
-    return sp;
+    return Shape_Polygon_from_scatter(std::move(pts), shape.velocity);
 }
 Shape_Polygon minkowski_polygon(std::span<const i2d> nodes, const Shape_Polygon & shape) //nodes have another implicit node at 0, 0
 {
@@ -123,10 +124,35 @@ Shape_Polygon minkowski_polygon(std::span<const i2d> nodes, const Shape_Polygon 
         for(size_t i = 0; i < shape.node_count(); ++i)
             pts.push_back(shape.get_absolute(i) - n);
 
-    std::vector<i2d> convex = convex_hull(std::move(pts));
-    Shape_Polygon sp = Shape_Polygon_from_points(convex);
-    sp.velocity = shape.velocity;
-    return sp;
+    return Shape_Polygon_from_scatter(std::move(pts), shape.velocity);
+}
+Shape_Polygon minkowski_motion(const Shape_Polygon & shape)
+{
+    std::vector<i2d> pts;
+    pts.reserve(shape.node_count() * 2);
+    for(size_t i = 0; i < shape.node_count(); ++i)
+    {
+        pts.push_back(shape.get_absolute(i));
+        pts.push_back(shape.get_absolute(i) + shape.velocity);
+    }
+    return Shape_Polygon_from_scatter(std::move(pts), i2d{0, 0});
+}
+Shape_Polygon minkowski_motion(Shape_Rectangle shape)
+{
+    return minkowski_motion(shape.as_polygon());
+}
+Shape_Rectangle minkowski_motion_axis_aligned(Shape_Rectangle shape)
+{
+    assert(axis_aligned(shape.velocity));
+    if(shape.velocity.x < 0 || shape.velocity.y < 0)
+    {
+        shape.position += shape.velocity;
+        shape.dimensions -= shape.velocity;
+    }
+    else
+        shape.dimensions += shape.velocity;
+    shape.velocity = i2d{0, 0};
+    return shape;
 }
 
 } // namespace kint

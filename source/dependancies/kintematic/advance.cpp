@@ -6,14 +6,21 @@
 
 namespace kint
 {
-Rational2D slide(Rational2D vel, const Impact & impact)
+struct Slide_Return
+{
+    Rational2D clipped_velocity;
+    Rational2D next_velocity;
+};
+Slide_Return slide(Rational2D vel, const Impact & impact)
 {
     Rational2D fh = vel * impact.t;
     Rational2D sh = vel * (1 - impact.t);
     Rational2D edge = Rational2D(impact.edge.node);
     Rational2D sh_rotated = dot(sh, edge) * edge;
     i2d::ntype edge_ls = dot(impact.edge.node, impact.edge.node);
-    return Rational2D(fh + sh_rotated / edge_ls).reduced();
+    Rational2D nv = (sh_rotated / edge_ls).reduced();
+    return {.clipped_velocity = Rational2D(fh + nv).reduced(),
+            .next_velocity = nv};
 };
 bool beneath_line(Shape_Line line, i2d point)
 {
@@ -58,43 +65,33 @@ std::vector<Impact> impact_occlusion_filter(std::span<const Impact> impacts)
 
     return filtered;
 }
-
-i2d clip_and_slide(Shape_Point rect, const Minkowski_Set & mset)
+struct Clip_Return
 {
-    i2d A = rect.position;
-    i2d B = rect.position + rect.velocity;
-
+    i2d clipped_velocity;
+    std::optional<i2d> next_velocity;
     std::vector<Impact> impacts;
+};
+Clip_Return sr_to_cr(const Slide_Return & sr, std::vector<Impact> && impacts)
+{
+    return {trunc(sr.clipped_velocity), trunc(sr.next_velocity), std::move(impacts)};
+}
+Clip_Return clip_and_slide(Shape_Point rect, const Minkowski_Set & mset)
+{
+    std::vector<Impact> impacts_closest = raycast_Minkowski_Set(rect.position, rect.position + rect.velocity, mset);
 
-    const auto find_best_impact = [&](const auto & shape, size_t /*shape_id*/)
-    {
-        if (auto ni = raycast_unmoving(A, B, shape))
-        {
-            if (!impacts.empty() && ni->t < impacts[0].t)
-                impacts.clear();
+    std::vector<Impact> impacts_filtered = impact_occlusion_filter(impacts_closest);
 
-            if (impacts.empty() || ni->t == impacts[0].t)
-                impacts.push_back(*ni);
-        }
-    };
+    if(impacts_filtered.empty())
+        return {rect.velocity, std::nullopt,
+                std::move(impacts_filtered)};
 
-    for (size_t i = 0; i < mset.rects.size(); i++)
-        find_best_impact(mset.rects[i], mset.rect_id[i]);
-    for (size_t i = 0; i < mset.polys.size(); i++)
-        find_best_impact(mset.polys[i], mset.poly_id[i]);
-
-    std::vector<Impact> impacts_filtered = impact_occlusion_filter(std::span(impacts.begin(), impacts.end()));
-
-    if (impacts_filtered.empty())
-        return rect.velocity;
-
-    if (impacts_filtered.size() == 1)
-        return trunc(slide(Rational2D(rect.velocity), impacts_filtered[0]));
+    if(impacts_filtered.size() == 1)
+        return sr_to_cr(slide(Rational2D(rect.velocity), impacts_filtered[0]),  std::move(impacts_filtered));
 
     i2d e0 = impacts_filtered[0].edge.node;
     bool all_parallel = true;
 
-    for (size_t i = 1; i < impacts_filtered.size(); i++)
+    for(size_t i = 1; i < impacts_filtered.size(); i++)
     {
         if(gcf::cross(e0, impacts_filtered[i].edge.node) != 0)
         {
@@ -103,14 +100,28 @@ i2d clip_and_slide(Shape_Point rect, const Minkowski_Set & mset)
         }
     }
 
-    if (!all_parallel)
+    if(!all_parallel)
     {
         // True corner: multiple non-parallel edges hit in their interior
-        return i2d{0, 0};
+        return {trunc(Rational2D(rect.velocity) * impacts_filtered[0].t),
+                i2d{0, 0},
+                std::move(impacts_filtered)};
     }
 
-    // All edges parallel → slide along any of them
-    return trunc(slide(Rational2D(rect.velocity), impacts_filtered[0]));
+    // All edges parallel, slide along any of them
+    return sr_to_cr(slide(Rational2D(rect.velocity), impacts_filtered[0]), std::move(impacts_filtered));
 }
-
+std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, bool better_next_velocity)
+{
+    Clip_Return clipped = clip_and_slide(shape_position_point(rect), mset);
+    rect.position += clipped.clipped_velocity;
+    if(clipped.next_velocity)
+        rect.velocity = *clipped.next_velocity;
+    else if(better_next_velocity)
+    {
+        Clip_Return nclipped = clip_and_slide(shape_position_point(rect), mset);
+        rect.velocity = nclipped.clipped_velocity;
+    }
+    return clipped.impacts;
+}
 }

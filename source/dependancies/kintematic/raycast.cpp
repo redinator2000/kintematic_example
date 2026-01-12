@@ -1,6 +1,6 @@
-
 #include "raycast.hpp"
 #include "collision.hpp"
+#include "minkowski.hpp"
 #include <algorithm>
 
 namespace kint
@@ -260,6 +260,30 @@ bool impl::collides_unmoving_impl(Shape_Line l, Shape_Rectangle shape)
 bool impl::collides_unmoving_impl(Shape_Line l, const Shape_Polygon & shape)
 {
     return bool(raycast_unmoving(l.position, l.node_absolute(), shape));
+}
+
+std::vector<Impact> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set & mset)
+{
+    std::vector<Impact> impacts = {};
+
+    const auto find_best_impact = [&](const auto & shape, size_t /*shape_id*/)
+    {
+        if (auto ni = raycast_unmoving(A, B, shape))
+        {
+            if (!impacts.empty() && ni->t < impacts[0].t)
+                impacts.clear();
+
+            if (impacts.empty() || ni->t == impacts[0].t)
+                impacts.push_back(*ni);
+        }
+    };
+
+    for (size_t i = 0; i < mset.rects.size(); i++)
+        find_best_impact(mset.rects[i], mset.rect_id[i]);
+    for (size_t i = 0; i < mset.polys.size(); i++)
+        find_best_impact(mset.polys[i], mset.poly_id[i]);
+
+    return impacts;
 }
 
 } // namespace kint

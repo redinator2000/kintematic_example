@@ -7,6 +7,10 @@
 namespace kint
 {
 using i2d = gcf::genericV2D<int64_t, 1>;
+constexpr bool axis_aligned(const i2d & v)
+{
+    return v.x == 0 || v.y == 0;
+}
 }
 
 #endif // KINT_V2D_HPP

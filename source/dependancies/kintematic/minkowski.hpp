@@ -11,6 +11,10 @@ Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, Shape_Line);
 Shape_Rectangle minkowski_rectangle(i2d rectangle_dimensions, Shape_Rectangle);
 Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, const Shape_Polygon &);
 
+Shape_Polygon minkowski_motion(const Shape_Polygon &);
+Shape_Polygon minkowski_motion(Shape_Rectangle);
+Shape_Rectangle minkowski_motion_axis_aligned(Shape_Rectangle);
+
 Shape_Polygon minkowski_polygon(std::span<const i2d>, const Shape_Polygon &); //nodes have another implicit node at 0, 0
 
 struct Minkowski_Set
@@ -40,12 +44,20 @@ void minkowski_set_append(Minkowski_Set & out,
 
             if constexpr (std::is_same_v<R, Shape_Rectangle>)
             {
-                out.rects.push_back(std::move(result));
-                out.rect_id.push_back(id);
+                if(axis_aligned(result.velocity))
+                {
+                    out.rects.push_back(minkowski_motion_axis_aligned(result));
+                    out.rect_id.push_back(id);
+                }
+                else
+                {
+                    out.polys.push_back(minkowski_motion(result));
+                    out.poly_id.push_back(id);
+                }
             }
             else
             {
-                out.polys.push_back(std::move(result));
+                out.polys.push_back(minkowski_motion(result));
                 out.poly_id.push_back(id);
             }
 
