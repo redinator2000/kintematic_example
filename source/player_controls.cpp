@@ -24,7 +24,7 @@ void player_think(Player & player)
         player.stop_after_advance = true;
     else
     {
-        player.want_velocity = new_vel * 3;
+        player.want_velocity = new_vel * 8;
         player.stop_after_advance = false;
     }
 
@@ -36,5 +36,5 @@ void player_think(Player & player)
     for(auto & c : keyboardCatches)
         c = false;
 
-    // player.want_velocity = kint::i2d{-3, -3};
+    player.want_velocity = kint::i2d{-3, 3};
 }

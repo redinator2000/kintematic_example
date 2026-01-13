@@ -13,7 +13,7 @@ sf::View window_default_view_fixed(sf::Vector2u window_size)
 
 float fixed_update(sf::Clock & tick_clock, auto callable) //returns interp_fraction
 {
-    constexpr sf::Time update_rate = sf::microseconds(16666 * 20);
+    constexpr sf::Time update_rate = sf::microseconds(16666);
     sf::Time delta = tick_clock.getElapsedTime();
     if(delta >= update_rate)
     {
@@ -59,7 +59,7 @@ int main()
         });
 
         window.clear();
-        sf::View view = sf::View(sf::Vector2f(12.0f, 0.0f), sf::Vector2f(window.getSize()) / 16.0f);
+        sf::View view = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(window.getSize()) / 1.0f);
         window.setView(view);
         grid_draw(window, view);
         World_draw(world, window, interp_fraction);

@@ -137,7 +137,7 @@ sf::Color grid_color(int n)
 
 void grid_draw(sf::RenderTarget& window, const sf::View& view)
 {
-    constexpr float spacing = 1.f;
+    constexpr float spacing = 8.f;
 
     // Get view bounds in world coordinates
     sf::Vector2f center = view.getCenter();

@@ -13,7 +13,7 @@ namespace kint
 {
     i2d slide_trunc(i2d pos, Rational2D ideal_vel, const Impact & impact);
 }
-World make_a_level()
+World smallworld()
 {
     World world;
     world.player.shape = kint::Shape_Rectangle({16, -8}, {0, 0}, {4, 4});
@@ -48,14 +48,30 @@ World make_a_level()
     assert(world.shapes.size() == world.shape_colors.size());
     return world;
 }
+World make_a_level()
+{
+    World world;
+    world.player.shape = kint::Shape_Rectangle({0, -64}, {0, 0}, {64, 64});
+
+    world.shapes.emplace_back(kint::Shape_Rectangle({128, 0}, {0, 0}, {64, 64}));
+    world.shape_colors.emplace_back(sf::Color(50, 150, 50));
+
+    world.shapes.emplace_back(kint::Shape_Rectangle({-1000, 0}, {0, 0}, {2000, 16}));
+    world.shape_colors.emplace_back(sf::Color(150, 50, 50));
+    world.shapes.emplace_back(kint::Shape_Polygon_from_points(std::vector{kint::i2d{0, 0}, kint::i2d{-256, -64}, kint::i2d{-384, -16}}));
+    world.shape_colors.emplace_back(sf::Color(50, 50, 150));
+
+    assert(world.shapes.size() == world.shape_colors.size());
+    return world;
+}
 void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
 {
     std::visit([&](auto & shape)
     {
-        if(ticks_total % 20 < 10)
-            shape.velocity.y = -1;
+        if(ticks_total % 100 < 50)
+            shape.velocity.y = -4;
         else
-            shape.velocity.y = +1;
+            shape.velocity.y = +4;
     }, shapev);
 }
 void World_update(World & world)
@@ -125,7 +141,7 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
     else
         shape_draw(window, interp_fraction, player_colliding ? sf::Color::Red : sf::Color::Green,
                    world.player.shape);
-
+    /*
     auto draw_impacts = [&](const kint::Shape_Line hat, const std::vector<kint::Impact> & unflitered)
     {
         std::vector<kint::Impact> impacts = kint::impact_occlusion_filter(unflitered);
@@ -186,5 +202,5 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
                        hat);
             draw_impacts(hat, hat_impacts);
         }
-    }
+    }*/
 }

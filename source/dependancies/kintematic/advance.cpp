@@ -35,6 +35,11 @@ Rational shrunk(Rational r)
     assert(abs(r) < abs(old_r));
     return r;
 }
+bool shrunk_checker(Rational2D a, Rational2D b)
+{
+    return (abs(a.x) < abs(b.x) && abs(a.y) <= abs(b.y)) ||
+           (abs(a.x) <= abs(b.x) && abs(a.y) < abs(b.y));
+}
 i2d slide_trunc(i2d pos, Rational2D ideal_vel, const Impact & impact)
 {
     const auto & clear = [pos, impact](auto v) -> bool
@@ -59,8 +64,8 @@ i2d slide_trunc(i2d pos, Rational2D ideal_vel, const Impact & impact)
             return t;
         Rational2D rx = Rational2D(shrunk(reducer.x), reducer.y);
         Rational2D ry = Rational2D(reducer.x, shrunk(reducer.y));
-        assert(gcf::dot(rx, rx) < gcf::dot(reducer, reducer));
-        assert(gcf::dot(ry, ry) < gcf::dot(reducer, reducer));
+        assert(shrunk_checker(rx, reducer));
+        assert(shrunk_checker(ry, reducer));
         bool rx_clear = clear(rx);
         bool ry_clear = clear(ry);
         if(rx_clear && ry_clear) // i don't think this should happen
@@ -76,7 +81,7 @@ i2d slide_trunc(i2d pos, Rational2D ideal_vel, const Impact & impact)
             reducer = ry;
         else
             return i2d{0, 0}; // i don't think this should happen
-        assert(gcf::dot(reducer, reducer) < gcf::dot(old_r, old_r));
+        assert(shrunk_checker(reducer, old_r));
     }
     return i2d{0, 0};
 }
@@ -189,9 +194,10 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
     };
     for(const auto & s : cmsr.rect_collisions)
         drag_collision(mset.rects[s]);
-    for(const auto & s : cmsr.rect_collisions)
+    for(const auto & s : cmsr.poly_collisions)
         drag_collision(mset.polys[s]);
 
+    std::vector<Impact> all_impacts;
     std::optional<i2d> nv = std::nullopt;
     Clip_Return clipped;
     do
@@ -200,6 +206,7 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
         rect.velocity = clipped.clipped_velocity;
         if(clipped.next_velocity)
             nv = clipped.next_velocity;
+        std::move(clipped.impacts.begin(), clipped.impacts.end(), std::back_inserter(all_impacts));
     }
     while(clipped.next_velocity);
 
@@ -213,6 +220,6 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
     else if(nv)
         rect.velocity = *nv;
 
-    return clipped.impacts;
+    return all_impacts;
 }
 }

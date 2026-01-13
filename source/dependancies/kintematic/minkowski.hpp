@@ -39,25 +39,17 @@ void minkowski_set_append(Minkowski_Set & out,
         std::visit([&](const auto& shape)
         {
             auto result = minkowski_rectangle(rectangle_dimensions, shape);
-
+            result.position += result.velocity;
             using R = std::decay_t<decltype(result)>;
 
             if constexpr (std::is_same_v<R, Shape_Rectangle>)
             {
-                if(axis_aligned(result.velocity))
-                {
-                    out.rects.push_back(minkowski_motion_axis_aligned(result));
-                    out.rect_id.push_back(id);
-                }
-                else
-                {
-                    out.polys.push_back(minkowski_motion(result));
-                    out.poly_id.push_back(id);
-                }
+                out.rects.push_back(result);
+                out.rect_id.push_back(id);
             }
             else
             {
-                out.polys.push_back(minkowski_motion(result));
+                out.polys.push_back(result);
                 out.poly_id.push_back(id);
             }
 
