@@ -12,6 +12,10 @@ struct Impact
     Rational2D position;
     Rational t;
     Shape_Line edge;
+    constexpr i2d edge_normal() const // not normalized
+    {
+        return i2d{edge.node.y, -edge.node.x};
+    }
 };
 std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Point);
 std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Line);

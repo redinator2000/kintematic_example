@@ -1,4 +1,6 @@
 #include "player_controls.hpp"
+#include <algorithm>
+
 std::array<bool, sf::Keyboard::KeyCount> keyboardCatches = {0};
 
 void handle_event(const sf::Event::KeyPressed & e)
@@ -11,7 +13,7 @@ bool key_held(sf::Keyboard::Key key)
         return true;
     return keyboardCatches[(size_t)key];
 }
-void player_think(Player & player)
+void player_fly(Player & player)
 {
     kint::i2d new_vel = {0, 0};
     if(key_held(sf::Keyboard::Key::W))    new_vel.y -= 1;
@@ -24,7 +26,7 @@ void player_think(Player & player)
         player.stop_after_advance = true;
     else
     {
-        player.want_velocity = new_vel * 8;
+        player.shape.velocity = new_vel * 8;
         player.stop_after_advance = false;
     }
 
@@ -32,9 +34,45 @@ void player_think(Player & player)
         player.moving_time = 0;
     else
         player.moving_time++;
+}
+void player_walk(Player & player)
+{
+    player.shape.velocity.y += 1;
+    bool left = key_held(sf::Keyboard::Key::A);
+    bool right = key_held(sf::Keyboard::Key::D);
+    if(left && right)
+    {
+        left = false;
+        right = false;
+    }
+    if(right && player.shape.velocity.x < 10)
+        player.shape.velocity.x += 1;
+    if(left  && player.shape.velocity.x > -10)
+        player.shape.velocity.x -= 1;
+    if(!right && player.shape.velocity.x > 0)
+        player.shape.velocity.x -= 1;
+    if(!left && player.shape.velocity.x < 0)
+        player.shape.velocity.x += 1;
+
+    std::optional<kint::Impact> ground = [&]() -> std::optional<kint::Impact>
+    {
+        for(const auto & i : player.recent_impacts)
+            if(gcf::dot(i.edge_normal(), kint::i2d{0, 1}) < 0)
+                return i;
+        return std::nullopt;
+    }();
+    if(ground && key_held(sf::Keyboard::Key::W))
+        player.shape.velocity.y = ground->edge.velocity.y - 12;
+}
+void player_think(Player & player)
+{
+    if(player.flying)
+        player_fly(player);
+    else
+        player_walk(player);
 
     for(auto & c : keyboardCatches)
         c = false;
 
-    player.want_velocity = kint::i2d{-3, 3};
+    // player.want_velocity = kint::i2d{-3, 3};
 }

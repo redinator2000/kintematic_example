@@ -49,6 +49,8 @@ int main()
             {
                 if(keyPressed->code == sf::Keyboard::Key::R)
                     world = make_a_level();
+                else if(keyPressed->code == sf::Keyboard::Key::C)
+                    world.player.flying = !world.player.flying;
                 handle_event(*keyPressed);
             }
         }

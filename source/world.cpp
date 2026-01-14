@@ -77,7 +77,7 @@ void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
 void World_update(World & world)
 {
     player_think(world.player);
-    world.player.shape.velocity = world.player.want_velocity;
+    world.player.pre_clip_velocity = world.player.shape.velocity;
 
     if(world.shapes.size())
         bouncer_think(world.shapes[0], world.ticks_total);
@@ -85,7 +85,7 @@ void World_update(World & world)
     std::vector<size_t> shape_ids(world.shapes.size());
     std::ranges::iota(shape_ids, 0);
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::span<const size_t>(shape_ids));
-    kint::move_and_slide(world.player.shape, mset);
+    world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset);
 
     for(auto & shapev : world.shapes)
         std::visit([&](auto & shape)

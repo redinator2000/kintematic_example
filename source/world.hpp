@@ -3,13 +3,16 @@
 
 #include "dependancies/kintematic/shape.hpp"
 #include <SFML/Graphics/Color.hpp>
+#include "dependancies/kintematic/raycast.hpp"
 
 struct Player
 {
-    kint::i2d want_velocity = kint::i2d{0, 0};
+    kint::i2d pre_clip_velocity = kint::i2d{0, 0};
     kint::Shape_Rectangle shape;
     int moving_time = 0;
     bool stop_after_advance = false;
+    bool flying = false;
+    std::vector<kint::Impact> recent_impacts = {};
 };
 struct World
 {

@@ -107,6 +107,10 @@ struct collides_Minkowski_Set_return
 {
     std::vector<size_t> rect_collisions;
     std::vector<size_t> poly_collisions;
+    constexpr bool any_collision() const
+    {
+        return rect_collisions.size() || poly_collisions.size();
+    }
 };
 collides_Minkowski_Set_return collides_Minkowski_Set(i2d, const Minkowski_Set &); //returns max movement
 } // namespace kint

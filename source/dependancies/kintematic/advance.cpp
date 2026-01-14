@@ -114,7 +114,7 @@ std::vector<Impact> impact_occlusion_filter(std::span<const Impact> impacts)
     for(const auto & im : impacts)
     {
         bool beneath_any =
-        std::ranges::any_of(impacts, [&](auto const& other)
+        std::ranges::any_of(impacts, [&](const auto & other)
         {
             if (&other == &im)
                 return false;
@@ -178,10 +178,17 @@ Clip_Return clip_and_slide(Shape_Point rect, const Minkowski_Set & mset)
     // All edges parallel, slide along any of them
     return sr_to_cr(slide(rect.position, Rational2D(rect.velocity), impacts_filtered[0]), std::move(impacts_filtered));
 }
-std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, bool better_next_velocity)
+i2d::ntype length_axis_aligned(i2d v)
 {
+    assert(v.x == 0 || v.y == 0);
+    return std::max(std::abs(v.x), std::abs(v.y));
+}
+std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, bool better_next_velocity, i2d::ntype max_escape_distance)
+{
+    std::vector<Impact> all_impacts;
+
     collides_Minkowski_Set_return cmsr = collides_Minkowski_Set(rect.position, mset);
-    const auto drag_collision = [&rect](const auto & shape)
+    const auto drag_collision = [&](const auto & shape)
     {
         i2d m = shape.velocity;
         i2d::ntype mm = dot(m, m);
@@ -189,15 +196,41 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
         {
             i2d::ntype current_flow = dot(m, rect.velocity);
             if(current_flow < mm)
+            {
                 rect.velocity += ((mm - current_flow) * m) / mm;
+            }
         }
+        constexpr std::array<i2d, 4> escape_vectors = {i2d{0, 1}, i2d{0, -1}, i2d{-1, 0}, i2d{1, 0}};
+        std::optional<i2d> best_escape = std::nullopt;
+        std::optional<Impact> best_escape_impact = std::nullopt;
+        for(const auto & ev : escape_vectors)
+        {
+            i2d evl = ev * max_escape_distance;
+            std::optional<Impact> impact = raycast_unmoving(rect.position + evl, rect.position, shape);
+            if(impact)
+            {
+                i2d bump = trunc(Rational2D(evl) * (1 - impact->t)); //todo: do the opposite of trunc, where it always gets a bit longer
+                if(!best_escape || length_axis_aligned(bump) < length_axis_aligned(*best_escape))
+                {
+                    best_escape = bump;
+                    best_escape_impact = impact;
+                }
+            }
+        }
+        assert(bool(best_escape) == bool(best_escape_impact));
+        if(best_escape)
+        {
+            all_impacts.push_back(*best_escape_impact);
+            if(!collides_Minkowski_Set(rect.position + *best_escape, mset).any_collision())
+                rect.position += *best_escape;
+        }
+
     };
     for(const auto & s : cmsr.rect_collisions)
         drag_collision(mset.rects[s]);
     for(const auto & s : cmsr.poly_collisions)
         drag_collision(mset.polys[s]);
 
-    std::vector<Impact> all_impacts;
     std::optional<i2d> nv = std::nullopt;
     Clip_Return clipped;
     do
@@ -212,12 +245,12 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
 
     rect.position += rect.velocity;
 
-    if(better_next_velocity)
+    /*if(better_next_velocity)
     {
         Clip_Return nclipped = clip_and_slide(shape_position_point(rect), mset);
         rect.velocity = nclipped.clipped_velocity;
     }
-    else if(nv)
+    else*/ if(nv)
         rect.velocity = *nv;
 
     return all_impacts;
