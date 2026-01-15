@@ -88,7 +88,7 @@ void World_update(World & world)
     std::vector<size_t> shape_ids(world.shapes.size());
     std::ranges::iota(shape_ids, 0);
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::span<const size_t>(shape_ids));
-    world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset);
+    world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset, 32, kint::i2d{0, -17});
 
     for(auto & shapev : world.shapes)
         std::visit([&](auto & shape)

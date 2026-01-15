@@ -87,12 +87,7 @@ i2d slide_trunc(i2d pos, Rational2D ideal_vel, const Impact & impact)
     }
     return i2d{0, 0};
 }
-struct Slide_Return
-{
-    i2d clipped_velocity;
-    i2d next_velocity;
-};
-Slide_Return slide(i2d pos, Rational2D vel, const Impact & impact)
+Rational2D slide_exact(i2d pos, Rational2D vel, const Impact & impact)
 {
     Rational2D fh = vel * impact.t;
     assert(Rational2D(pos) + fh == impact.position);
@@ -102,9 +97,12 @@ Slide_Return slide(i2d pos, Rational2D vel, const Impact & impact)
     i2d::ntype edge_ls = gcf::dot(impact.edge.node, impact.edge.node);
     Rational2D nv = (sh_rotated / edge_ls).reduced();
     Rational2D cv = (fh + nv).reduced();
-    return {.clipped_velocity = slide_trunc(pos, cv, impact),
-            .next_velocity = trunc(cv - fh)};
+    return cv;
 };
+i2d slide(i2d pos, Rational2D vel, const Impact & impact)
+{
+    return slide_trunc(pos, slide_exact(pos, vel, impact), impact);
+}
 std::vector<Impact> impact_occlusion_filter(std::span<const Impact> impacts)
 {
     if(impacts.size() < 2)
@@ -134,58 +132,61 @@ std::vector<Impact> impact_occlusion_filter(std::span<const Impact> impacts)
 
     return filtered;
 }
-struct Clip_Return
-{
-    i2d clipped_velocity;
-    std::optional<i2d> next_velocity;
-    std::vector<Impact> impacts;
-};
-Clip_Return sr_to_cr(const Slide_Return & sr, std::vector<Impact> && impacts)
-{
-    return {sr.clipped_velocity, sr.next_velocity, std::move(impacts)};
-}
-Clip_Return clip_and_slide(Shape_Point rect, const Minkowski_Set & mset)
+i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact> * impacts_out, bool do_slide)
 {
     std::vector<Impact> impacts_closest = raycast_Minkowski_Set(rect.position, rect.position + rect.velocity, mset);
 
     std::vector<Impact> impacts_filtered = impact_occlusion_filter(impacts_closest);
 
     if(impacts_filtered.empty())
-        return {rect.velocity, std::nullopt,
-                std::move(impacts_filtered)};
+        return rect.velocity;
 
-    if(impacts_filtered.size() == 1)
-        return sr_to_cr(slide(rect.position, Rational2D(rect.velocity), impacts_filtered[0]),  std::move(impacts_filtered));
-
-    i2d e0 = impacts_filtered[0].edge.node;
-    bool all_parallel = true;
-
-    for(size_t i = 1; i < impacts_filtered.size(); i++)
+    bool any_nonparallel = impacts_filtered.size() > 1 && [&]()
     {
-        if(gcf::cross(e0, impacts_filtered[i].edge.node) != 0)
+        i2d e0 = impacts_filtered[0].edge.node;
+        for(size_t i = 1; i < impacts_filtered.size(); i++)
         {
-            all_parallel = false;
-            break;
+            if(gcf::cross(e0, impacts_filtered[i].edge.node) != 0)
+            {
+                return true;
+            }
         }
-    }
+        return false;
+    }();
 
-    if(!all_parallel)
+    i2d clipped_vel;
+    if(any_nonparallel || !do_slide)
     {
         // True corner: multiple non-parallel edges hit in their interior
-        return {trunc(Rational2D(rect.velocity) * impacts_filtered[0].t),
-                i2d{0, 0},
-                std::move(impacts_filtered)};
+        clipped_vel = trunc(Rational2D(rect.velocity) * impacts_filtered[0].t);
     }
+    else
+        clipped_vel = slide(rect.position, Rational2D(rect.velocity), impacts_filtered[0]);
 
-    // All edges parallel, slide along any of them
-    return sr_to_cr(slide(rect.position, Rational2D(rect.velocity), impacts_filtered[0]), std::move(impacts_filtered));
+    if(impacts_out)
+        std::move(impacts_filtered.begin(), impacts_filtered.end(), std::back_inserter(*impacts_out));
+
+    return clipped_vel;
 }
 i2d::ntype length_axis_aligned(i2d v)
 {
     assert(v.x == 0 || v.y == 0);
     return std::max(std::abs(v.x), std::abs(v.y));
 }
-std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance)
+i2d normalized_axis_aligned(i2d v)
+{
+    assert(v.x == 0 || v.y == 0);
+    if(v.x > 0)
+        return {1, 0};
+    else if(v.x < 0)
+        return {-1, 0};
+    else if(v.y > 0)
+        return {0, 1};
+    else if(v.y < 0)
+        return {0, -1};
+    return {0, 0};
+}
+std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance, std::optional<i2d> step_vector)
 {
     std::vector<Impact> all_impacts;
 
@@ -202,6 +203,9 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
                 rect.velocity += ((mm - current_flow) * m) / mm;
             }
         }
+    };
+    const auto escape_collision = [&](const auto & shape)
+    {
         constexpr std::array<i2d, 4> escape_vectors = {i2d{0, 1}, i2d{0, -1}, i2d{-1, 0}, i2d{1, 0}};
         std::optional<i2d> best_escape = std::nullopt;
         std::optional<Impact> best_escape_impact = std::nullopt;
@@ -226,26 +230,52 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
             if(!collides_Minkowski_Set(rect.position + *best_escape, mset).any_collision())
                 rect.position += *best_escape;
         }
-
     };
     for(const auto & s : cmsr.rect_collisions)
         drag_collision(mset.rects[s]);
     for(const auto & s : cmsr.poly_collisions)
         drag_collision(mset.polys[s]);
 
-    std::optional<i2d> nv = std::nullopt;
-    Clip_Return clipped;
+    if(max_escape_distance)
+    {
+        for(const auto & s : cmsr.rect_collisions)
+            escape_collision(mset.rects[s]);
+        for(const auto & s : cmsr.poly_collisions)
+            escape_collision(mset.polys[s]);
+    }
+
+    i2d old_vel = rect.velocity;
+
+    size_t old_all_impacts_size;
     do
     {
-        clipped = clip_and_slide(shape_position_point(rect), mset);
-        rect.velocity = clipped.clipped_velocity;
-        if(clipped.next_velocity)
-            nv = clipped.next_velocity;
-        std::move(clipped.impacts.begin(), clipped.impacts.end(), std::back_inserter(all_impacts));
+        old_all_impacts_size = all_impacts.size();
+        rect.velocity = clip_velocity(shape_position_point(rect), mset, &all_impacts, true);
     }
-    while(clipped.next_velocity);
+    while(old_all_impacts_size < all_impacts.size());
 
     rect.position += rect.velocity;
+
+    if(step_vector)
+    {
+        i2d flat_dir = normalized_axis_aligned({step_vector->y, -step_vector->x});
+        i2d::ntype old_flat_vel = gcf::dot(old_vel, flat_dir);
+        i2d::ntype clipped_flat_vel = gcf::dot(rect.velocity, flat_dir);
+        if(std::abs(clipped_flat_vel) < std::abs(old_flat_vel))
+        {
+            Shape_Point stepper = shape_position_point(rect);
+            stepper.velocity = *step_vector;
+            i2d up_movement = clip_velocity(stepper, mset, nullptr, false);
+            stepper.position += up_movement;
+            i2d flat_vel = flat_dir * (old_flat_vel - clipped_flat_vel);
+            stepper.velocity = flat_vel;
+            stepper.position += clip_velocity(stepper, mset, nullptr, false);
+            stepper.velocity = -up_movement;
+            stepper.position += clip_velocity(stepper, mset, nullptr, false);
+            rect.position = stepper.position;
+            rect.velocity = old_flat_vel * flat_dir;
+        }
+    }
 
     return all_impacts;
 }
