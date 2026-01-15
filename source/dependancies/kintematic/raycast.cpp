@@ -2,6 +2,7 @@
 #include "collision.hpp"
 #include "minkowski.hpp"
 #include <algorithm>
+#include <cassert>
 
 namespace kint
 {
@@ -145,8 +146,8 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Rectangle rect) // Li
     switch(hit_edge)
     {
         case 0: // left: x = min.x
-            edge.position = min;
-            edge.node = i2d{0, rect.dimensions.y};
+            edge.position = i2d{min.x, max.y};;
+            edge.node = i2d{0, - rect.dimensions.y};
             break;
 
         case 1: // right: x = max.x
@@ -160,8 +161,8 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Rectangle rect) // Li
             break;
 
         case 3: // top: y = max.y
-            edge.position = i2d{min.x, max.y};
-            edge.node = i2d{rect.dimensions.x, 0};
+            edge.position = max;
+            edge.node = i2d{- rect.dimensions.x, 0};
             break;
 
         default:
@@ -173,6 +174,8 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Rectangle rect) // Li
 
 std::optional<Impact> raycast_unmoving(i2d A, i2d B, const Shape_Polygon & poly)
 {
+    assert(Shape_Polygon_area(poly) >= 0);
+
     i2d d = B - A;   // ray direction
 
     Rational t_enter{0};
@@ -187,7 +190,7 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, const Shape_Polygon & poly)
         i2d p1 = poly.get_absolute((i + 1) % n);
 
         i2d e = p1 - p0;          // edge direction
-        i2d nrm{-e.y, e.x};       // outward normal for CW polygon (matches your code)
+        i2d nrm{-e.y, e.x};       // outward normal for CW polygon
 
         i2d::ntype p = -dot(nrm, d);
         i2d::ntype q =  dot(nrm, A - p0);
@@ -196,11 +199,11 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, const Shape_Polygon & poly)
         {
             // Ray is parallel to this edge
             if(q <= 0)
-                return std::nullopt; // outside the half-space → no hit
-            continue; // inside or on boundary → no clipping
+                return std::nullopt; // outside the half-space; no hit
+            continue; // inside or on boundary; no clipping
         }
 
-        Rational r{q, p};
+        Rational r = Rational(q, p).reduced();
 
         if(p < 0)
         {

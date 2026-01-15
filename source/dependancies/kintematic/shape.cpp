@@ -92,4 +92,22 @@ Shape_Polygon Shape_Polygon_from_points(std::span<const i2d> pts)
 
     return poly;
 }
+i2d::ntype Shape_Polygon_area(const Shape_Polygon & poly)
+{
+    const size_t n = poly.node_count();
+    if (n < 3)
+        return 0; // degenerate polygon
+
+    i2d::ntype area2 = 0; // twice the signed area
+
+    for (size_t i = 0; i < n; i++)
+    {
+        i2d a = poly.get_absolute(i);
+        i2d b = poly.get_absolute((i + 1) % n);
+
+        area2 += gcf::cross(a, b);
+    }
+
+    return area2 / 2;
+}
 }

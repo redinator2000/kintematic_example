@@ -35,6 +35,10 @@ int main()
     window.setFramerateLimit(144);
 
     World world = make_a_level();
+    sf::Vector2f camera_center{0, 0};// = to_sfV2f(world.player.shape.position);
+
+    sf::Font font;
+    auto _ = font.openFromFile("/usr/share/fonts/gnu-free/FreeSans.otf");
 
     sf::Clock tick_clock;
     while(window.isOpen())
@@ -48,7 +52,10 @@ int main()
             else if(const auto * keyPressed = event->getIf<sf::Event::KeyPressed>())
             {
                 if(keyPressed->code == sf::Keyboard::Key::R)
+                {
                     world = make_a_level();
+                    tick_clock.restart();
+                }
                 else if(keyPressed->code == sf::Keyboard::Key::C)
                     world.player.flying = !world.player.flying;
                 handle_event(*keyPressed);
@@ -61,10 +68,17 @@ int main()
         });
 
         window.clear();
-        sf::View view = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(window.getSize()) / 1.0f);
+        sf::View view = sf::View(camera_center, sf::Vector2f(window.getSize()) / 1.0f);
         window.setView(view);
         grid_draw(window, view);
-        World_draw(world, window, interp_fraction);
+        World_draw(world, window, 0.0f);//interp_fraction);
+        {
+            window.setView(sf::View(sf::Vector2f(window.getSize()) / 2.0f, sf::Vector2f(window.getSize())));
+            sf::Text text = sf::Text(font, "x: " + std::to_string(world.player.shape.velocity.x) + "\n" +
+                                           "y: " + std::to_string(world.player.shape.velocity.y)
+                                           , 12);
+            window.draw(text);
+        }
         window.display();
     }
 }

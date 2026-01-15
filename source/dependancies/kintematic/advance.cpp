@@ -26,7 +26,9 @@ Rational shrunk(Rational r)
 {
     assert(r != 0);
     Rational old_r = r;
-    if(r > 1)
+    if(r.reduced().den != 1)
+        r = trunc(r);
+    else if(r > 1)
         r -= 1;
     else if(r < -1)
         r += 1;
@@ -183,7 +185,7 @@ i2d::ntype length_axis_aligned(i2d v)
     assert(v.x == 0 || v.y == 0);
     return std::max(std::abs(v.x), std::abs(v.y));
 }
-std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, bool better_next_velocity, i2d::ntype max_escape_distance)
+std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance)
 {
     std::vector<Impact> all_impacts;
 
@@ -244,14 +246,6 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
     while(clipped.next_velocity);
 
     rect.position += rect.velocity;
-
-    /*if(better_next_velocity)
-    {
-        Clip_Return nclipped = clip_and_slide(shape_position_point(rect), mset);
-        rect.velocity = nclipped.clipped_velocity;
-    }
-    else*/ if(nv)
-        rect.velocity = *nv;
 
     return all_impacts;
 }

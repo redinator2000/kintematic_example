@@ -51,14 +51,17 @@ World smallworld()
 World make_a_level()
 {
     World world;
-    world.player.shape = kint::Shape_Rectangle({0, -64}, {0, 0}, {64, 64});
+    world.player.shape = kint::Shape_Rectangle({-256, -64 - 64 - 1}, {0, 0}, {64, 64});
+    world.player.pre_clip_velocity = world.player.shape.velocity;
 
     world.shapes.emplace_back(kint::Shape_Rectangle({128, 0}, {0, 0}, {64, 64}));
     world.shape_colors.emplace_back(sf::Color(50, 150, 50));
 
     world.shapes.emplace_back(kint::Shape_Rectangle({-1000, 0}, {0, 0}, {2000, 16}));
     world.shape_colors.emplace_back(sf::Color(150, 50, 50));
-    world.shapes.emplace_back(kint::Shape_Polygon_from_points(std::vector{kint::i2d{0, 0}, kint::i2d{-256, -64}, kint::i2d{-384, -16}}));
+    world.shapes.emplace_back(kint::Shape_Polygon_from_points(std::vector{kint::i2d{0, 0}, kint::i2d{-384, -16}, kint::i2d{-256, -64}}));
+    world.shape_colors.emplace_back(sf::Color(50, 50, 150));
+    world.shapes.emplace_back(kint::Shape_Rectangle({256, 0}, {0, 0}, {32, 32}));
     world.shape_colors.emplace_back(sf::Color(50, 50, 150));
 
     assert(world.shapes.size() == world.shape_colors.size());
@@ -104,7 +107,7 @@ void World_update(World & world)
 void World_draw(const World & world, sf::RenderTarget & window, float interp_fraction)
 {
     constexpr std::array<kint::i2d, 8> hairs = {kint::i2d{0, 1}, kint::i2d{1, 1}, kint::i2d{1, 0}, kint::i2d{1, -1}, kint::i2d{0, -1}, kint::i2d{-1, -1}, kint::i2d{-1, 0}, kint::i2d{-1, 1}};
-    //constexpr std::array<kint::i2d, 1> hairs = {kint::i2d{1, 1}};
+    //constexpr std::array<kint::i2d, 1> hairs = {kint::i2d{-1, 1}};
 
     std::optional<kint::i2d> show_minkowski = std::nullopt;
     if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Tab))
@@ -141,7 +144,6 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
     else
         shape_draw(window, interp_fraction, player_colliding ? sf::Color::Red : sf::Color::Green,
                    world.player.shape);
-    /*
     auto draw_impacts = [&](const kint::Shape_Line hat, const std::vector<kint::Impact> & unflitered)
     {
         std::vector<kint::Impact> impacts = kint::impact_occlusion_filter(unflitered);
@@ -173,7 +175,7 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
     {
         for(const auto & s : shapes)
         {
-            if(std::optional<kint::Impact> hat_impact = raycast_unmoving(hat.position, hat.node_absolute(), s))
+            if(std::optional<kint::Impact> hat_impact = kint::raycast_unmoving(hat.position, hat.node_absolute(), s))
                 hat_impacts.push_back(*hat_impact);
             if(kint::collides_unmoving(hat, s))
                 hat_colliding = true;
@@ -183,7 +185,7 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
     {
         for(const auto & h : hairs)
         {
-            kint::Shape_Line hat = kint::Shape_Line(world.player.shape.position + h * 2 + kint::i2d{2, 2}, world.player.shape.velocity, h * 3, false);
+            kint::Shape_Line hat = kint::Shape_Line(world.player.shape.position + h * 32 + kint::i2d{32, 32}, world.player.shape.velocity, h * 16, false);
             bool hat_colliding = false;
             std::vector<kint::Impact> hat_impacts = {};
             find_impacts(world.shapes, hat, hat_colliding, hat_impacts);
@@ -194,7 +196,7 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
     }
     else
     {
-        const auto h = world.player.want_velocity;
+        const auto h = world.player.pre_clip_velocity;
         {
             kint::Shape_Line hat = kint::Shape_Line(world.player.shape.position, world.player.shape.velocity, h, false);
             std::vector<kint::Impact> hat_impacts = raycast_Minkowski_Set(hat.position, hat.node_absolute(), mset);
@@ -202,5 +204,5 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
                        hat);
             draw_impacts(hat, hat_impacts);
         }
-    }*/
+    }
 }

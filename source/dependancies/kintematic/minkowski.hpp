@@ -46,6 +46,8 @@ void minkowski_set_append(Minkowski_Set & out,
             {
                 out.rects.push_back(result);
                 out.rect_id.push_back(id);
+                //out.polys.push_back(result.as_polygon());
+                //out.poly_id.push_back(id);
             }
             else
             {

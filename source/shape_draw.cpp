@@ -4,14 +4,6 @@
 #include <SFML/Graphics/RectangleShape.hpp>
 #include "dependancies/kintematic/minkowski.hpp"
 
-constexpr sf::Vector2i to_sfV2i(const kint::i2d & v)
-{
-    return sf::Vector2i(v.x, v.y);
-}
-constexpr sf::Vector2f to_sfV2f(const kint::i2d & v)
-{
-    return sf::Vector2f(v.x, v.y);
-}
 constexpr sf::Vector2f to_sfV2f(const kint::Rational2D & v)
 {
     return sf::Vector2f(v.x.to_float(), v.y.to_float());
@@ -137,7 +129,7 @@ sf::Color grid_color(int n)
 
 void grid_draw(sf::RenderTarget& window, const sf::View& view)
 {
-    constexpr float spacing = 8.f;
+    constexpr float spacing = 8.0f;
 
     // Get view bounds in world coordinates
     sf::Vector2f center = view.getCenter();

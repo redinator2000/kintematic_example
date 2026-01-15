@@ -43,7 +43,7 @@ struct Shape_Polygon //must be convex
 {
     i2d position;
     i2d velocity;
-    std::vector<i2d> nodes; //clockwise. position is also a node, the first/last one
+    std::vector<i2d> nodes; // clockwise (with +x right +y down). position is also a node, the first/last one
 
     size_t node_count() const
     {
@@ -71,6 +71,8 @@ Shape_Polygon Shape_Polygon_right_triangle(Shape_Rectangle, Right_Triangle_Corne
 Shape_Polygon Shape_Polygon_from_points(std::span<const i2d>); //must be convex
 
 std::vector<i2d> convex_hull(std::vector<i2d> && points);
+
+i2d::ntype Shape_Polygon_area(const Shape_Polygon & poly);
 
 template<typename S>
 Shape_Point shape_position_point(const S & s)
