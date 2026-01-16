@@ -12,7 +12,7 @@ struct Player
     int moving_time = 0;
     bool stop_after_advance = false;
     bool flying = false;
-    std::vector<kint::Impact> recent_impacts = {};
+    std::vector<kint::Impact_ID> recent_impacts = {};
 };
 struct World
 {

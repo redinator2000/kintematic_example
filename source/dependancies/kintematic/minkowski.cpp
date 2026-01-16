@@ -94,7 +94,10 @@ Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, Shape_Line shape)
         for(size_t l = 0; l < 2; l++)
             pts.push_back(rect_points[r] + line_points[l]);
 
-    return Shape_Polygon_from_scatter(std::move(pts), shape.velocity);
+    Shape_Polygon poly = Shape_Polygon_from_scatter(std::move(pts), shape.velocity);
+    if(shape.one_way)
+        poly.one_way = shape.node;
+    return poly;
 }
 Shape_Polygon minkowski_rectangle(i2d rectangle_dimensions, const Shape_Polygon & shape)
 {

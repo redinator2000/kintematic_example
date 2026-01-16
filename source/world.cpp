@@ -64,6 +64,9 @@ World make_a_level()
     world.shapes.emplace_back(kint::Shape_Rectangle({256, 0}, {0, 0}, {32, 32}));
     world.shape_colors.emplace_back(sf::Color(50, 50, 150));
 
+    world.shapes.emplace_back(kint::Shape_Line({0, -128}, {0, 0}, {-64, 0}, true));
+    world.shape_colors.emplace_back(sf::Color(200, 50, 200));
+
     assert(world.shapes.size() == world.shape_colors.size());
     return world;
 }
@@ -144,31 +147,29 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
     else
         shape_draw(window, interp_fraction, player_colliding ? sf::Color::Red : sf::Color::Green,
                    world.player.shape);
-    auto draw_impacts = [&](const kint::Shape_Line hat, const std::vector<kint::Impact> & unflitered)
+    auto draw_impacts = [&](const kint::Shape_Line hat, const auto /*std::vector<Impact>*/ & impacts)
     {
-        std::vector<kint::Impact> impacts = kint::impact_occlusion_filter(unflitered);
-        if(impacts.size())
+        if(!impacts.size())
+            return;
+        for(const auto & impact : impacts)
         {
-            for(const auto & impact : impacts)
-            {
-                shape_draw(window, interp_fraction, sf::Color::Green, impact.edge);
-                //rational2d_draw(window, sf::Color::White, impact.position);
+            shape_draw(window, interp_fraction, sf::Color::Green, impact.edge);
+            //rational2d_draw(window, sf::Color::White, impact.position);
 
-                kint::Rational2D vel = hat.node;
+            kint::Rational2D vel = hat.node;
 
-                kint::Rational2D fh = vel * impact.t;
-                kint::Rational2D sh = (vel * (1 - impact.t)).reduced();
-                kint::Rational2D edge = kint::Rational2D(impact.edge.node);
-                kint::Rational2D sh_rotated = dot(sh, edge) * edge;
-                kint::i2d::ntype edge_ls = dot(impact.edge.node, impact.edge.node);
-                kint::Rational2D nv = (sh_rotated / edge_ls).reduced();
-                kint::Rational2D cv = (fh + nv).reduced();
+            kint::Rational2D fh = vel * impact.t;
+            kint::Rational2D sh = (vel * (1 - impact.t)).reduced();
+            kint::Rational2D edge = kint::Rational2D(impact.edge.node);
+            kint::Rational2D sh_rotated = dot(sh, edge) * edge;
+            kint::i2d::ntype edge_ls = dot(impact.edge.node, impact.edge.node);
+            kint::Rational2D nv = (sh_rotated / edge_ls).reduced();
+            kint::Rational2D cv = (fh + nv).reduced();
 
-                assert(kint::Rational2D(hat.position) + fh == impact.position);
-                rational2d_draw(window, sf::Color::White, kint::Rational2D(hat.position) + fh);
-                rational2d_draw(window, sf::Color::Yellow, kint::Rational2D(hat.position) + cv);
-                rational2d_draw(window, sf::Color::Blue, hat.position + slide_trunc(hat.position, cv, impact));
-            }
+            assert(kint::Rational2D(hat.position) + fh == impact.position);
+            rational2d_draw(window, sf::Color::White, kint::Rational2D(hat.position) + fh);
+            rational2d_draw(window, sf::Color::Yellow, kint::Rational2D(hat.position) + cv);
+            rational2d_draw(window, sf::Color::Blue, hat.position + slide_trunc(hat.position, cv, impact));
         }
     };
     const auto find_impacts = [](const auto & shapes, const kint::Shape_Line & hat, bool & hat_colliding, std::vector<kint::Impact> & hat_impacts)
@@ -199,7 +200,7 @@ void World_draw(const World & world, sf::RenderTarget & window, float interp_fra
         const auto h = world.player.pre_clip_velocity;
         {
             kint::Shape_Line hat = kint::Shape_Line(world.player.shape.position, world.player.shape.velocity, h, false);
-            std::vector<kint::Impact> hat_impacts = raycast_Minkowski_Set(hat.position, hat.node_absolute(), mset);
+            std::vector<kint::Impact_ID> hat_impacts = raycast_Minkowski_Set(hat.position, hat.node_absolute(), mset);
             shape_draw(window, interp_fraction, sf::Color::White,
                        hat);
             draw_impacts(hat, hat_impacts);

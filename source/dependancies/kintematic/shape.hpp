@@ -4,6 +4,7 @@
 #include <variant>
 #include <vector>
 #include <span>
+#include <optional>
 
 #include "i2d.hpp"
 
@@ -44,6 +45,7 @@ struct Shape_Polygon //must be convex
     i2d position;
     i2d velocity;
     std::vector<i2d> nodes; // clockwise (with +x right +y down). position is also a node, the first/last one
+    std::optional<i2d> one_way = std::nullopt;
 
     size_t node_count() const
     {

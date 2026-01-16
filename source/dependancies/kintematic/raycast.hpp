@@ -23,7 +23,12 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Rectangle);
 std::optional<Impact> raycast_unmoving(i2d A, i2d B, const Shape_Polygon &);
 std::optional<Impact> raycast_unmoving(i2d A, i2d B, const Shape_Variant &);
 struct Minkowski_Set;
-std::vector<Impact> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set &);
+struct Impact_ID : public Impact
+{
+    size_t shape_id;
+    Impact_ID(Impact n_impact, size_t n_shape_id) : Impact(n_impact), shape_id(n_shape_id) {}
+};
+std::vector<Impact_ID> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set &);
 }
 
 #endif // KINT_RAYCAST_HPP

@@ -245,6 +245,9 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, const Shape_Polygon & poly)
     edge.node = p1 - p0;
     edge.velocity = poly.velocity;
 
+    if(poly.one_way && gcf::dot(edge.node, *poly.one_way) >= 0)
+        return std::nullopt;
+
     return Impact{P, t_enter, edge};
 }
 bool impl::collides_unmoving_impl(Shape_Line l, Shape_Point shape)
@@ -265,19 +268,23 @@ bool impl::collides_unmoving_impl(Shape_Line l, const Shape_Polygon & shape)
     return bool(raycast_unmoving(l.position, l.node_absolute(), shape));
 }
 
-std::vector<Impact> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set & mset)
+std::vector<Impact_ID> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set & mset)
 {
-    std::vector<Impact> impacts = {};
+    std::vector<Impact_ID> filtered;
 
-    const auto find_best_impact = [&](const auto & shape, size_t /*shape_id*/)
+    const auto find_best_impact = [&](const auto & shape, size_t shape_id)
     {
-        if (auto ni = raycast_unmoving(A, B, shape))
+        if(auto ni = raycast_unmoving(A, B, shape))
         {
-            if (!impacts.empty() && ni->t < impacts[0].t)
-                impacts.clear();
+            if(!filtered.empty() && ni->t < filtered[0].t)
+            {
+                filtered.clear();
+            }
 
-            if (impacts.empty() || ni->t == impacts[0].t)
-                impacts.push_back(*ni);
+            if(filtered.empty() || ni->t == filtered[0].t)
+            {
+                filtered.emplace_back(*ni, shape_id);
+            }
         }
     };
 
@@ -286,7 +293,7 @@ std::vector<Impact> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set & ms
     for (size_t i = 0; i < mset.polys.size(); i++)
         find_best_impact(mset.polys[i], mset.poly_id[i]);
 
-    return impacts;
+    return filtered;
 }
 
 } // namespace kint

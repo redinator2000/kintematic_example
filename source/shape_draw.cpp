@@ -69,7 +69,7 @@ void shape_draw(sf::RenderTarget & window, float interp_fraction, sf::Color colo
 
         if(len > 0.0001f)
         {
-            float arrow_len = 0.5f;
+            float arrow_len = 4.0f;
 
             sf::Vector2f stem_start = mid;
             sf::Vector2f stem_end   = mid + stem * (arrow_len / len);

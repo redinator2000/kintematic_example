@@ -6,10 +6,10 @@
 
 namespace kint
 {
-struct Impact;
+struct Impact_ID;
 struct Minkowski_Set;
-std::vector<Impact> impact_occlusion_filter(std::span<const Impact>);
-std::vector<Impact> move_and_slide(Shape_Rectangle &, const Minkowski_Set &, i2d::ntype max_escape_distance = 32, std::optional<i2d> step_vector = std::nullopt);
+i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out, bool do_slide);
+std::vector<Impact_ID> move_and_slide(Shape_Rectangle &, const Minkowski_Set &, i2d::ntype max_escape_distance = 32, std::optional<i2d> step_vector = std::nullopt);
 // step vector should be the axis-aligned up direction with length of max step height
 }
 

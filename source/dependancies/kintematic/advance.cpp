@@ -103,12 +103,12 @@ i2d slide(i2d pos, Rational2D vel, const Impact & impact)
 {
     return slide_trunc(pos, slide_exact(pos, vel, impact), impact);
 }
-std::vector<Impact> impact_occlusion_filter(std::span<const Impact> impacts)
+std::vector<Impact_ID> impact_occlusion_filter(std::span<const Impact_ID> impacts)
 {
     if(impacts.size() < 2)
-        return std::vector<Impact>(impacts.begin(), impacts.end());
+        return std::vector<Impact_ID>(impacts.begin(), impacts.end());
 
-    std::vector<Impact> filtered;
+    std::vector<Impact_ID> filtered;
     filtered.reserve(impacts.size());
 
     for(const auto & im : impacts)
@@ -127,16 +127,18 @@ std::vector<Impact> impact_occlusion_filter(std::span<const Impact> impacts)
         });
 
         if(!beneath_any)
+        {
             filtered.push_back(im);
+        }
     }
 
     return filtered;
 }
-i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact> * impacts_out, bool do_slide)
+i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out, bool do_slide)
 {
-    std::vector<Impact> impacts_closest = raycast_Minkowski_Set(rect.position, rect.position + rect.velocity, mset);
+    std::vector<Impact_ID> impacts_closest = raycast_Minkowski_Set(rect.position, rect.position + rect.velocity, mset);
 
-    std::vector<Impact> impacts_filtered = impact_occlusion_filter(impacts_closest);
+    std::vector<Impact_ID> impacts_filtered = impact_occlusion_filter(impacts_closest);
 
     if(impacts_filtered.empty())
         return rect.velocity;
@@ -186,9 +188,9 @@ i2d normalized_axis_aligned(i2d v)
         return {0, -1};
     return {0, 0};
 }
-std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance, std::optional<i2d> step_vector)
+std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance, std::optional<i2d> step_vector)
 {
-    std::vector<Impact> all_impacts;
+    std::vector<Impact_ID> all_impacts;
 
     collides_Minkowski_Set_return cmsr = collides_Minkowski_Set(rect.position, mset);
     const auto drag_collision = [&](const auto & shape)
@@ -204,7 +206,7 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
             }
         }
     };
-    const auto escape_collision = [&](const auto & shape)
+    const auto escape_collision = [&](const auto & shape, size_t shape_id)
     {
         constexpr std::array<i2d, 4> escape_vectors = {i2d{0, 1}, i2d{0, -1}, i2d{-1, 0}, i2d{1, 0}};
         std::optional<i2d> best_escape = std::nullopt;
@@ -226,7 +228,7 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
         assert(bool(best_escape) == bool(best_escape_impact));
         if(best_escape)
         {
-            all_impacts.push_back(*best_escape_impact);
+            all_impacts.emplace_back(*best_escape_impact, shape_id);
             if(!collides_Minkowski_Set(rect.position + *best_escape, mset).any_collision())
                 rect.position += *best_escape;
         }
@@ -239,9 +241,9 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
     if(max_escape_distance)
     {
         for(const auto & s : cmsr.rect_collisions)
-            escape_collision(mset.rects[s]);
+            escape_collision(mset.rects[s], mset.rect_id[s]);
         for(const auto & s : cmsr.poly_collisions)
-            escape_collision(mset.polys[s]);
+            escape_collision(mset.polys[s], mset.poly_id[s]);
     }
 
     i2d old_vel = rect.velocity;
@@ -272,8 +274,12 @@ std::vector<Impact> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set &
             stepper.position += clip_velocity(stepper, mset, nullptr, false);
             stepper.velocity = -up_movement;
             stepper.position += clip_velocity(stepper, mset, nullptr, false);
-            rect.position = stepper.position;
-            rect.velocity = old_flat_vel * flat_dir;
+            i2d stepper_change = stepper.position - rect.position;
+            if(std::abs(stepper_change.x) > 0)
+            {
+                rect.position = stepper.position;
+                rect.velocity = old_flat_vel * flat_dir;
+            }
         }
     }
 
