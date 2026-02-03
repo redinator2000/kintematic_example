@@ -225,8 +225,6 @@ struct intV2D : public genericV2D_r<intV2D<Tint, es>, Tint, es>
         auto shifted = intV2D<oTint, oTint(es)>(v);
         *this = trim_cast<oTint>(shifted);
     }
-
-    // bool operator== (const intV2D &) const = default;
 };
 }
 

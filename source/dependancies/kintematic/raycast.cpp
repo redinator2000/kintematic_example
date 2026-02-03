@@ -272,7 +272,7 @@ std::vector<Impact_ID> raycast_Minkowski_Set(i2d A, i2d B, const Minkowski_Set &
 {
     std::vector<Impact_ID> filtered;
 
-    const auto find_best_impact = [&](const auto & shape, size_t shape_id)
+    const auto find_best_impact = [&](const auto & shape, uint64_t shape_id)
     {
         if(auto ni = raycast_unmoving(A, B, shape))
         {

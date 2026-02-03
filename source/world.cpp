@@ -67,6 +67,11 @@ World make_a_level()
     world.shapes.emplace_back(kint::Shape_Line({0, -128}, {0, 0}, {-64, 0}, true));
     world.shape_colors.emplace_back(sf::Color(200, 50, 200));
 
+    world.shapes.emplace_back(kint::Shape_Line({512, 0}, {0, 0}, {0, -64}, true));
+    world.shape_colors.emplace_back(sf::Color(200, 50, 200));
+    world.shapes.emplace_back(kint::Shape_Line({522, -64}, {0, 0}, {0, 64}, true));
+    world.shape_colors.emplace_back(sf::Color(200, 50, 200));
+
     assert(world.shapes.size() == world.shape_colors.size());
     return world;
 }
@@ -88,9 +93,7 @@ void World_update(World & world)
     if(world.shapes.size())
         bouncer_think(world.shapes[0], world.ticks_total);
 
-    std::vector<size_t> shape_ids(world.shapes.size());
-    std::ranges::iota(shape_ids, 0);
-    kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::span<const size_t>(shape_ids));
+    kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::views::iota(0));
     world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset, 32, kint::i2d{0, -17});
 
     for(auto & shapev : world.shapes)

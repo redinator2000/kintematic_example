@@ -112,7 +112,7 @@ struct collides_Minkowski_Set_return
         return rect_collisions.size() || poly_collisions.size();
     }
 };
-collides_Minkowski_Set_return collides_Minkowski_Set(i2d, const Minkowski_Set &); //returns max movement
+collides_Minkowski_Set_return collides_Minkowski_Set(i2d, const Minkowski_Set &, bool skip_oneways);
 } // namespace kint
 
 #endif // KINT_COLLISION_HPP

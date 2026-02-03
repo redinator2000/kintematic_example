@@ -3,6 +3,7 @@
 
 #include "shape.hpp"
 #include <span>
+#include <ranges>
 
 namespace kint
 {
@@ -20,34 +21,31 @@ Shape_Polygon minkowski_polygon(std::span<const i2d>, const Shape_Polygon &); //
 struct Minkowski_Set
 {
     std::vector<Shape_Rectangle> rects;
-    std::vector<size_t> rect_id;
+    std::vector<uint64_t> rect_id;
     std::vector<Shape_Polygon> polys;
-    std::vector<size_t> poly_id;
+    std::vector<uint64_t> poly_id;
 };
 
-template<typename Shape>
+template<typename Shape, std::ranges::input_range Shape_IDs>
 void minkowski_set_append(Minkowski_Set & out,
                           i2d rectangle_dimensions,
                           std::span<const Shape> shapes,
-                          std::span<const size_t> shape_id)
+                          Shape_IDs shape_id)
 {
     for(size_t i = 0; i < shapes.size(); i++)
     {
         const Shape& sv = shapes[i];
-        size_t id = shape_id[i];
+        uint64_t id = shape_id[i];
 
         std::visit([&](const auto& shape)
         {
             auto result = minkowski_rectangle(rectangle_dimensions, shape);
-            result.position += result.velocity;
             using R = std::decay_t<decltype(result)>;
 
             if constexpr (std::is_same_v<R, Shape_Rectangle>)
             {
                 out.rects.push_back(result);
                 out.rect_id.push_back(id);
-                //out.polys.push_back(result.as_polygon());
-                //out.poly_id.push_back(id);
             }
             else
             {
@@ -58,10 +56,10 @@ void minkowski_set_append(Minkowski_Set & out,
         }, sv);
     }
 }
-template<typename Shape>
+template<typename Shape, std::ranges::input_range Shape_IDs>
 Minkowski_Set minkowski_set_create(i2d rectangle_dimensions,
                                    std::span<const Shape> shapes,
-                                   std::span<const size_t> shape_id)
+                                   Shape_IDs shape_id)
 {
     Minkowski_Set out;
     minkowski_set_append(out, rectangle_dimensions, shapes, shape_id);
