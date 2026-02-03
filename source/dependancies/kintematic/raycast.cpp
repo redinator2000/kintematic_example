@@ -74,8 +74,6 @@ std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Line line)
 }
 std::optional<Impact> raycast_unmoving(i2d A, i2d B, Shape_Rectangle rect) // Liang–Barsky
 {
-    gcf::intV2D<long int, 64> whatever = gcf::intV2D<long int, 64>(gcf::intV2D<long int, 1>(A));
-
     i2d d = B - A; // direction
 
     // Rectangle bounds

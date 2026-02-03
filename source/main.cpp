@@ -71,7 +71,7 @@ int main()
         sf::View view = sf::View(camera_center, sf::Vector2f(window.getSize()) / 1.0f);
         window.setView(view);
         grid_draw(window, view);
-        World_draw(world, window, 0.0f);//interp_fraction);
+        World_draw(world, window, interp_fraction);
         {
             window.setView(sf::View(sf::Vector2f(window.getSize()) / 2.0f, sf::Vector2f(window.getSize())));
             sf::Text text = sf::Text(font, "x: " + std::to_string(world.player.shape.velocity.x) + "\n" +

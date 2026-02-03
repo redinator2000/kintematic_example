@@ -24,5 +24,5 @@ add_executable(main ${SRC_SOURCES})
 target_link_libraries(main PRIVATE SFML::Graphics)
 
 target_compile_features(main PRIVATE cxx_std_23)
-# target_compile_options(main PRIVATE -Wall -Wextra -Wshadow -Winit-self -Wredundant-decls -Wcast-align -Wfloat-equal -Wunreachable-code -Werror)
+target_compile_options(main PRIVATE -Wall -Wextra -Wshadow -Winit-self -Wredundant-decls -Wcast-align -Wfloat-equal -Wunreachable-code -Werror)
 target_compile_options(main PRIVATE -g)
