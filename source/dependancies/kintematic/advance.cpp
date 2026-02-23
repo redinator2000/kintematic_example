@@ -188,7 +188,7 @@ i2d normalized_axis_aligned(i2d v)
         return {0, -1};
     return {0, 0};
 }
-std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance, std::optional<i2d> step_vector)
+std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Set & mset, i2d::ntype max_escape_distance, std::optional<Platformer_Properties> platformer_properties)
 {
     std::vector<Impact_ID> all_impacts;
 
@@ -258,15 +258,15 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
 
     rect.position += rect.velocity;
 
-    if(step_vector)
+    if(platformer_properties && platformer_properties->step_height)
     {
-        i2d flat_dir = normalized_axis_aligned({step_vector->y, -step_vector->x});
+        i2d flat_dir = normalized_axis_aligned({-platformer_properties->down_direction.y, platformer_properties->down_direction.x});
         i2d::ntype old_flat_vel = gcf::dot(old_vel, flat_dir);
         i2d::ntype clipped_flat_vel = gcf::dot(rect.velocity, flat_dir);
         if(std::abs(clipped_flat_vel) < std::abs(old_flat_vel))
         {
             Shape_Point stepper = shape_position_point(rect);
-            stepper.velocity = *step_vector;
+            stepper.velocity = -platformer_properties->down_direction * platformer_properties->step_height;
             i2d up_movement = clip_velocity(stepper, mset, nullptr, false);
             stepper.position += up_movement;
             i2d flat_vel = flat_dir * (old_flat_vel - clipped_flat_vel);

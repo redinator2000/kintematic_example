@@ -93,8 +93,10 @@ void World_update(World & world)
     if(world.shapes.size())
         bouncer_think(world.shapes[0], world.ticks_total);
 
+    kint::Platformer_Properties platformer_properties{.down_direction = kint::i2d{0, 1}, .step_height = 17};
+
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::views::iota(0));
-    world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset, 32, kint::i2d{0, -17});
+    world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset, 32, platformer_properties);
 
     for(auto & shapev : world.shapes)
         std::visit([&](auto & shape)
