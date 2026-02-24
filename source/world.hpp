@@ -10,6 +10,7 @@ struct Player
     kint::i2d pre_clip_velocity = kint::i2d{0, 0};
     kint::Shape_Rectangle shape;
     int moving_time = 0;
+    int was_walking = 0;
     bool stop_after_advance = false;
     bool flying = false;
     std::vector<kint::Impact_ID> recent_impacts = {};

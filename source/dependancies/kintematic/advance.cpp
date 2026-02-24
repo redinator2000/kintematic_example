@@ -8,6 +8,12 @@
 
 namespace kint
 {
+std::optional<i2d> Platformer_Properties::sticky_slope_reflected() const
+{
+    if(!sticky_slope)
+        return std::nullopt;
+    return *sticky_slope - 2 * gcf::dot(*sticky_slope, down_direction) * down_direction;
+}
 bool beneath_line(Shape_Line line, i2d point) // true if on line
 {
     if(gcf::cross(line.node, point - line.position) < 0)
@@ -134,7 +140,7 @@ std::vector<Impact_ID> impact_occlusion_filter(std::span<const Impact_ID> impact
 
     return filtered;
 }
-i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out, bool do_slide)
+i2d clip_velocity_conditional_slide(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out, auto slide_condition)
 {
     std::vector<Impact_ID> impacts_closest = raycast_Minkowski_Set(rect.position, rect.position + rect.velocity, mset);
 
@@ -157,7 +163,7 @@ i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impa
     }();
 
     i2d clipped_vel;
-    if(any_nonparallel || !do_slide)
+    if(any_nonparallel || !slide_condition(impacts_filtered[0]))
     {
         // True corner: multiple non-parallel edges hit in their interior
         clipped_vel = trunc(Rational2D(rect.velocity) * impacts_filtered[0].t);
@@ -169,6 +175,10 @@ i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impa
         std::move(impacts_filtered.begin(), impacts_filtered.end(), std::back_inserter(*impacts_out));
 
     return clipped_vel;
+}
+i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out)
+{
+    return clip_velocity_conditional_slide(rect, mset, impacts_out, [](const Impact_ID &){ return false; });
 }
 i2d::ntype length_axis_aligned(i2d v)
 {
@@ -248,11 +258,22 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
 
     i2d old_vel = rect.velocity;
 
+    std::optional<i2d> shallow_slope_reflected = std::nullopt;
+    if(platformer_properties)
+        shallow_slope_reflected = platformer_properties->sticky_slope_reflected();
+
     size_t old_all_impacts_size;
     do
     {
         old_all_impacts_size = all_impacts.size();
-        rect.velocity = clip_velocity(shape_position_point(rect), mset, &all_impacts, true);
+        rect.velocity = clip_velocity_conditional_slide(shape_position_point(rect), mset, &all_impacts,
+            [&](const Impact_ID & impact)
+        {
+            if(!shallow_slope_reflected)
+                return true;
+            return gcf::cross(*platformer_properties->sticky_slope, impact.edge.node) > 0 ||
+                   gcf::cross(impact.edge.node, *shallow_slope_reflected) > 0;
+        });
     }
     while(old_all_impacts_size < all_impacts.size());
 
@@ -266,14 +287,14 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
         if(std::abs(clipped_flat_vel) < std::abs(old_flat_vel))
         {
             Shape_Point stepper = shape_position_point(rect);
-            stepper.velocity = -platformer_properties->down_direction * platformer_properties->step_height;
-            i2d up_movement = clip_velocity(stepper, mset, nullptr, false);
+            stepper.velocity = -platformer_properties->down_direction * *platformer_properties->step_height;
+            i2d up_movement = clip_velocity(stepper, mset, nullptr);
             stepper.position += up_movement;
             i2d flat_vel = flat_dir * (old_flat_vel - clipped_flat_vel);
             stepper.velocity = flat_vel;
-            stepper.position += clip_velocity(stepper, mset, nullptr, false);
+            stepper.position += clip_velocity(stepper, mset, nullptr);
             stepper.velocity = -up_movement;
-            stepper.position += clip_velocity(stepper, mset, nullptr, false);
+            stepper.position += clip_velocity(stepper, mset, nullptr);
             i2d stepper_change = stepper.position - rect.position;
             if(std::abs(stepper_change.x) > 0)
             {

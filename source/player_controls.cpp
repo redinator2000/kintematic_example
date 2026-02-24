@@ -45,6 +45,8 @@ void player_walk(Player & player)
         left = false;
         right = false;
     }
+    if(left || right)
+        player.was_walking = 10;
     if(right && player.shape.velocity.x < 10)
         player.shape.velocity.x += 1;
     if(left  && player.shape.velocity.x > -10)
@@ -73,6 +75,9 @@ void player_think(Player & player)
 
     for(auto & c : keyboardCatches)
         c = false;
+
+    if(player.was_walking)
+        player.was_walking--;
 
     // player.want_velocity = kint::i2d{-3, 3};
 }

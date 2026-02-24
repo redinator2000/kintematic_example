@@ -67,10 +67,13 @@ World make_a_level()
     world.shapes.emplace_back(kint::Shape_Line({0, -128}, {0, 0}, {-64, 0}, true));
     world.shape_colors.emplace_back(sf::Color(200, 50, 200));
 
-    world.shapes.emplace_back(kint::Shape_Line({512, 0}, {0, 0}, {0, -64}, true));
+    world.shapes.emplace_back(kint::Shape_Line({612, 0}, {0, 0}, {0, -64}, true));
     world.shape_colors.emplace_back(sf::Color(200, 50, 200));
-    world.shapes.emplace_back(kint::Shape_Line({522, -64}, {0, 0}, {0, 64}, true));
+    world.shapes.emplace_back(kint::Shape_Line({622, -64}, {0, 0}, {0, 64}, true));
     world.shape_colors.emplace_back(sf::Color(200, 50, 200));
+
+    world.shapes.emplace_back(kint::Shape_Polygon{{256 + 128, 0}, {0, 0}, std::vector{kint::i2d{128, -128}, kint::i2d{128, 0}}});
+    world.shape_colors.emplace_back(sf::Color(50, 50, 150));
 
     assert(world.shapes.size() == world.shape_colors.size());
     return world;
@@ -93,7 +96,11 @@ void World_update(World & world)
     if(world.shapes.size())
         bouncer_think(world.shapes[0], world.ticks_total);
 
-    kint::Platformer_Properties platformer_properties{.down_direction = kint::i2d{0, 1}, .step_height = 17};
+    kint::Platformer_Properties platformer_properties = kint::Platformer_Properties{.down_direction = kint::i2d{0, 1}};
+    if(!world.player.recent_impacts.empty())
+        platformer_properties.step_height = 17;
+    if(world.player.was_walking == 0)
+        platformer_properties.sticky_slope = kint::i2d{1, 1};
 
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::views::iota(0));
     world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset, 32, platformer_properties);

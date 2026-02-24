@@ -12,10 +12,11 @@ struct Minkowski_Set;
 struct Platformer_Properties
 {
     i2d down_direction;
-    i2d::ntype step_height;
+    std::optional<i2d::ntype> step_height = std::nullopt; // will be multiplied by -down_direction
+    std::optional<i2d> sticky_slope = std::nullopt; // to the down-right, will be mirrored using down direction // used to define the steepest slope not to slide down
+    std::optional<i2d> sticky_slope_reflected() const;
 };
-
-i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out, bool do_slide);
+i2d clip_velocity(Shape_Point rect, const Minkowski_Set & mset, std::vector<Impact_ID> * impacts_out);
 std::vector<Impact_ID> move_and_slide(Shape_Rectangle &, const Minkowski_Set &, i2d::ntype max_escape_distance = 32, std::optional<Platformer_Properties> platformer_properties = std::nullopt);
 // step vector should be the axis-aligned up direction with length of max step height
 }
