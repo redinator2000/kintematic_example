@@ -216,6 +216,34 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
             }
         }
     };
+    for(const auto & s : cmsr.rect_collisions)
+        drag_collision(mset.rects[s]);
+    for(const auto & s : cmsr.poly_collisions)
+        drag_collision(mset.polys[s]);
+
+    i2d old_vel = rect.velocity;
+
+    std::optional<i2d> shallow_slope_reflected = std::nullopt;
+    if(platformer_properties)
+        shallow_slope_reflected = platformer_properties->sticky_slope_reflected();
+
+    size_t old_all_impacts_size;
+    do
+    {
+        old_all_impacts_size = all_impacts.size();
+        rect.velocity = clip_velocity_conditional_slide(shape_position_point(rect), mset, &all_impacts,
+            [&](const Impact_ID & impact)
+        {
+            if(!shallow_slope_reflected)
+                return true;
+            return gcf::cross(*platformer_properties->sticky_slope, impact.edge.node) > 0 ||
+                   gcf::cross(impact.edge.node, *shallow_slope_reflected) > 0;
+        });
+    }
+    while(old_all_impacts_size < all_impacts.size());
+
+    rect.position += rect.velocity;
+
     const auto escape_collision = [&](const auto & shape, size_t shape_id)
     {
         constexpr std::array<i2d, 4> escape_vectors = {i2d{0, 1}, i2d{0, -1}, i2d{-1, 0}, i2d{1, 0}};
@@ -243,41 +271,14 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
                 rect.position += *best_escape;
         }
     };
-    for(const auto & s : cmsr.rect_collisions)
-        drag_collision(mset.rects[s]);
-    for(const auto & s : cmsr.poly_collisions)
-        drag_collision(mset.polys[s]);
-
+    collides_Minkowski_Set_return cmsr_post = collides_Minkowski_Set(rect.position, mset);
     if(max_escape_distance)
     {
-        for(const auto & s : cmsr.rect_collisions)
+        for(const auto & s : cmsr_post.rect_collisions)
             escape_collision(mset.rects[s], mset.rect_id[s]);
-        for(const auto & s : cmsr.poly_collisions)
+        for(const auto & s : cmsr_post.poly_collisions)
             escape_collision(mset.polys[s], mset.poly_id[s]);
     }
-
-    i2d old_vel = rect.velocity;
-
-    std::optional<i2d> shallow_slope_reflected = std::nullopt;
-    if(platformer_properties)
-        shallow_slope_reflected = platformer_properties->sticky_slope_reflected();
-
-    size_t old_all_impacts_size;
-    do
-    {
-        old_all_impacts_size = all_impacts.size();
-        rect.velocity = clip_velocity_conditional_slide(shape_position_point(rect), mset, &all_impacts,
-            [&](const Impact_ID & impact)
-        {
-            if(!shallow_slope_reflected)
-                return true;
-            return gcf::cross(*platformer_properties->sticky_slope, impact.edge.node) > 0 ||
-                   gcf::cross(impact.edge.node, *shallow_slope_reflected) > 0;
-        });
-    }
-    while(old_all_impacts_size < all_impacts.size());
-
-    rect.position += rect.velocity;
 
     if(platformer_properties && platformer_properties->step_height)
     {

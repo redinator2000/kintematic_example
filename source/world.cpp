@@ -103,7 +103,6 @@ void World_update(World & world)
     player_think(world.player);
     world.player.pre_clip_velocity = world.player.shape.velocity;
 
-
     kint::Platformer_Properties platformer_properties = kint::Platformer_Properties{.down_direction = kint::i2d{0, 1}};
     if(!world.player.recent_impacts.empty())
         platformer_properties.step_height = 17;
