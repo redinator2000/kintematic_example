@@ -202,7 +202,7 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
 {
     std::vector<Impact_ID> all_impacts;
 
-    collides_Minkowski_Set_return cmsr = collides_Minkowski_Set(rect.position, mset, true);
+    collides_Minkowski_Set_return cmsr = collides_Minkowski_Set(rect.position, mset);
     const auto drag_collision = [&](const auto & shape)
     {
         i2d m = shape.velocity;
@@ -239,7 +239,7 @@ std::vector<Impact_ID> move_and_slide(Shape_Rectangle & rect, const Minkowski_Se
         if(best_escape)
         {
             all_impacts.emplace_back(*best_escape_impact, shape_id);
-            if(!collides_Minkowski_Set(rect.position + *best_escape, mset, true).any_collision())
+            if(!collides_Minkowski_Set(rect.position + *best_escape, mset).any_collision())
                 rect.position += *best_escape;
         }
     };

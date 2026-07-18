@@ -54,7 +54,8 @@ World make_a_level()
     world.player.shape = kint::Shape_Rectangle({-256, -64 - 64 - 1}, {0, 0}, {64, 64});
     world.player.pre_clip_velocity = world.player.shape.velocity;
 
-    world.shapes.emplace_back(kint::Shape_Rectangle({128, 0}, {0, 0}, {64, 64}));
+    // world.shapes.emplace_back(kint::Shape_Rectangle({128, 0}, {0, 0}, {64, 64}));
+    world.shapes.emplace_back(kint::Shape_Line({128, 0}, {0, 0}, {-128, 0}, true));
     world.shape_colors.emplace_back(sf::Color(50, 150, 50));
 
     world.shapes.emplace_back(kint::Shape_Rectangle({-1000, 0}, {0, 0}, {2000, 16}));
@@ -82,7 +83,7 @@ void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
 {
     std::visit([&](auto & shape)
     {
-        if(ticks_total % 100 < 50)
+        if(ticks_total % 30 < 15)
             shape.velocity.y = -4;
         else
             shape.velocity.y = +4;

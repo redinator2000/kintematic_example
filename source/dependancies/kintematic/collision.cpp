@@ -57,7 +57,7 @@ bool impl::collides_unmoving_impl(const Shape_Polygon & a, const Shape_Polygon &
 {
     return collides_unmoving_impl(shape_position_point(a), minkowski_polygon(a.nodes, b));
 }
-collides_Minkowski_Set_return collides_Minkowski_Set(i2d position, const Minkowski_Set & mset, bool skip_oneways) //returns max movement
+collides_Minkowski_Set_return collides_Minkowski_Set(i2d position, const Minkowski_Set & mset) // on-way polygons are ignored, unless they have velocity pushing on edge of the point
 {
     Shape_Point point{.position = position, .velocity = i2d{0, 0}};
     collides_Minkowski_Set_return out;
@@ -66,9 +66,19 @@ collides_Minkowski_Set_return collides_Minkowski_Set(i2d position, const Minkows
             out.rect_collisions.push_back(s);
     for(size_t s = 0; s < mset.polys.size(); s++)
     {
-        if(skip_oneways && mset.polys[s].one_way)
+        if(!collides_unmoving(point, mset.polys[s]))
             continue;
-        if(collides_unmoving(point, mset.polys[s]))
+        if(mset.polys[s].one_way)
+        {
+            if(gcf::dot(i2d{-mset.polys[s].one_way->y, mset.polys[s].one_way->x}, mset.polys[s].velocity) > 0) // one-way is moving in direction
+            {
+                Shape_Polygon prev_assume = mset.polys[s];
+                prev_assume.position -= prev_assume.velocity;
+                if(!collides_unmoving(point, prev_assume)) // on the edge of the one-way
+                    out.poly_collisions.push_back(s);
+            }
+        }
+        else
             out.poly_collisions.push_back(s);
     }
     return out;
