@@ -51,11 +51,11 @@ World smallworld()
 World make_a_level()
 {
     World world;
-    world.player.shape = kint::Shape_Rectangle({-256, -64 - 64 - 1}, {0, 0}, {64, 64});
+    world.player.shape = kint::Shape_Rectangle({100, -100}, {0, 0}, {64, 64});
     world.player.pre_clip_velocity = world.player.shape.velocity;
 
-    // world.shapes.emplace_back(kint::Shape_Rectangle({128, 0}, {0, 0}, {64, 64}));
-    world.shapes.emplace_back(kint::Shape_Line({128, 0}, {0, 0}, {-128, 0}, true));
+    world.shapes.emplace_back(kint::Shape_Rectangle({128, 0}, {0, 0}, {64, 64}));
+    // world.shapes.emplace_back(kint::Shape_Line({128, 0}, {0, 0}, {-128, 0}, true));
     world.shape_colors.emplace_back(sf::Color(50, 150, 50));
 
     world.shapes.emplace_back(kint::Shape_Rectangle({-1000, 0}, {0, 0}, {2000, 16}));
@@ -83,7 +83,7 @@ void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
 {
     std::visit([&](auto & shape)
     {
-        if(ticks_total % 30 < 15)
+        if(ticks_total % 100 < 50)
             shape.velocity.y = -4;
         else
             shape.velocity.y = +4;
@@ -91,11 +91,18 @@ void bouncer_think(kint::Shape_Variant & shapev, int ticks_total)
 }
 void World_update(World & world)
 {
+    if(world.shapes.size())
+        bouncer_think(world.shapes[0], world.ticks_total);
+
+    for(auto & shapev : world.shapes)
+        std::visit([&](auto & shape)
+        {
+            shape.position += shape.velocity;
+        }, shapev);
+
     player_think(world.player);
     world.player.pre_clip_velocity = world.player.shape.velocity;
 
-    if(world.shapes.size())
-        bouncer_think(world.shapes[0], world.ticks_total);
 
     kint::Platformer_Properties platformer_properties = kint::Platformer_Properties{.down_direction = kint::i2d{0, 1}};
     if(!world.player.recent_impacts.empty())
@@ -105,12 +112,6 @@ void World_update(World & world)
 
     kint::Minkowski_Set mset = minkowski_set_create(world.player.shape.dimensions, std::span<const kint::Shape_Variant>(world.shapes), std::views::iota(0));
     world.player.recent_impacts =  kint::move_and_slide(world.player.shape, mset, 32, platformer_properties);
-
-    for(auto & shapev : world.shapes)
-        std::visit([&](auto & shape)
-        {
-            shape.position += shape.velocity;
-        }, shapev);
 
     if(world.player.stop_after_advance)
         world.player.shape.velocity = kint::i2d{0, 0};
